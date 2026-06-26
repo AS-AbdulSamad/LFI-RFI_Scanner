@@ -1,5 +1,3 @@
-# LFI-RFI_Scanner
-
 # 🔒 LFI-RFIv2 Scanner — LFI/RFI Vulnerability Scanner
 
 > **For authorized penetration testing and security research only.**  
